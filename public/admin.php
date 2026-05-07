@@ -48,12 +48,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$docs = db()->query('
-    SELECT d.*, s.name AS creator_name
-    FROM documents d
-    JOIN staff s ON s.id = d.created_by
-    ORDER BY d.created_at DESC
-')->fetchAll();
+$q = $_GET['q'] ?? '';
+
+if ($q) {
+    $stmt = db()->prepare('
+        SELECT d.*, s.name AS creator_name
+        FROM documents d
+        JOIN staff s ON s.id = d.created_by
+        WHERE d.title LIKE ?
+        ORDER BY d.created_at DESC
+    ');
+    $stmt->execute([$q . '%']);
+    $docs = $stmt->fetchAll();
+} else {
+    $docs = db()->query('
+        SELECT d.*, s.name AS creator_name
+        FROM documents d
+        JOIN staff s ON s.id = d.created_by
+        ORDER BY d.created_at DESC
+    ')->fetchAll();
+}
+
 
 render_header('Admin', $staff);
 ?>
@@ -93,6 +108,12 @@ render_header('Admin', $staff);
     <?php if (empty($docs)): ?>
         <p class="empty">No documents yet.</p>
     <?php else: ?>
+
+    <form method="GET" style="margin-bottom: 1rem;">
+        <input type="text" name="q" placeholder="Search by title..." value="<?= h($_GET['q'] ?? '') ?>">
+        <button type="submit" class="btn">Search</button>
+    </form>
+
         <table class="data">
             <thead>
                 <tr>
