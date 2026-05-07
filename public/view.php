@@ -3,16 +3,32 @@
 require __DIR__ . '/../lib/bootstrap.php';
 require __DIR__ . '/../lib/layout.php';
 
-$token = $_GET['token'] ?? '';
 
-$stmt = db()->prepare('
-    SELECT d.*, s.recipient_email
-    FROM shares s
-    JOIN documents d ON d.id = s.document_id
-    WHERE s.token = ?
-');
-$stmt->execute([$token]);
+
+$token = $_GET['token'] ?? null;
+$slug = $_GET['slug'] ?? null;
+
+if ($slug) {
+    // ✅ Fetch by slug (new feature)
+    $stmt = db()->prepare('
+        SELECT d.*, "" as recipient_email
+        FROM documents d
+        WHERE d.slug = ?
+    ');
+    $stmt->execute([$slug]);
+} else {
+    // ✅ Existing behavior (token-based)
+    $stmt = db()->prepare('
+        SELECT d.*, s.recipient_email
+        FROM shares s
+        JOIN documents d ON d.id = s.document_id
+        WHERE s.token = ?
+    ');
+    $stmt->execute([$token]);
+}
+
 $doc = $stmt->fetch();
+
 
 // ✅ Scheduled publishing check
 $now = new DateTime();
@@ -51,7 +67,11 @@ render_header($doc['title']);
 ?>
 
 <h1 class="page-title"><?= h($doc['title']) ?></h1>
-<p class="meta">Shared with <?= h($doc['recipient_email']) ?></p>
+
+<?php if (!empty($doc['recipient_email'])): ?>
+    <p class="meta">Shared with <?= h($doc['recipient_email']) ?></p>
+<?php endif; ?>
+
 
 <pre class="doc-body"><?= h($doc['body']) ?></pre>
 
