@@ -11,15 +11,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $body = trim($_POST['body'] ?? '');
     $published_at = $_POST['published_at'] ?? null;
 
+    function generate_slug($title) {
+    $slug = strtolower($title);
+    $slug = preg_replace('/[^a-z0-9]+/', '-', $slug);
+    $slug = trim($slug, '-');
+    return $slug;
+}
+
+    $slug = generate_slug($title);
+
+    $existing = db()->prepare("SELECT COUNT(*) as count FROM documents WHERE slug = ?");
+    $existing->execute([$slug]);
+    $row = $existing->fetch();
+
+    if ($row['count'] > 0) {
+        $slug .= '-' . rand(100, 999);
+    }
+
 
     if ($title === '' || $body === '') {
         $error = 'Title and body are required.';
     } else {
         $stmt = db()->prepare('
-            INSERT INTO documents (title, body, created_by, published_at)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO documents (title, body, created_by, published_at, slug)
+            VALUES (?, ?, ?, ?, ?)
+
+            
         ');
-        $stmt->execute([$title, $body, $staff['id'], $published_at]);
+        $stmt->execute([$title, $body, $staff['id'], $published_at, $slug]);
         $docId = (int) db()->lastInsertId();
 
         audit_log('create', 'document', $docId, ['title' => $title]);
@@ -88,7 +107,13 @@ render_header('Admin', $staff);
                 <?php foreach ($docs as $d): ?>
                     <tr>
                         <td class="id">#<?= (int) $d['id'] ?></td>
-                        <td><?= h($d['title']) ?></td>
+                        <td>
+                            <?= h($d['title']) ?><br>
+                            <?php if (!empty($d['slug'])): ?>
+                                <small><?= h($d['slug']) ?></small>
+                            <?php endif; ?>
+                        </td>
+
                         <td><?= h($d['creator_name']) ?></td>
                         <td><?= h($d['created_at']) ?></td>
                         <td><a href="/share.php?doc=<?= (int) $d['id'] ?>" class="btn-link">Create share →</a></td>
