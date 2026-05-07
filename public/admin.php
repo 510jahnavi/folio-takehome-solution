@@ -9,15 +9,17 @@ $error = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim($_POST['title'] ?? '');
     $body = trim($_POST['body'] ?? '');
+    $published_at = $_POST['published_at'] ?? null;
+
 
     if ($title === '' || $body === '') {
         $error = 'Title and body are required.';
     } else {
         $stmt = db()->prepare('
-            INSERT INTO documents (title, body, created_by)
-            VALUES (?, ?, ?)
+            INSERT INTO documents (title, body, created_by, published_at)
+            VALUES (?, ?, ?, ?)
         ');
-        $stmt->execute([$title, $body, $staff['id']]);
+        $stmt->execute([$title, $body, $staff['id'], $published_at]);
         $docId = (int) db()->lastInsertId();
 
         audit_log('create', 'document', $docId, ['title' => $title]);
@@ -58,6 +60,10 @@ render_header('Admin', $staff);
         <div class="form-field">
             <label for="body">Body</label>
             <textarea id="body" name="body" required></textarea>
+        </div>
+        <div class="form-field">
+            <label for="published_at">Publish At</label>
+            <input type="datetime-local" id="published_at" name="published_at">
         </div>
         <button type="submit" class="btn">Create document</button>
     </form>

@@ -14,6 +14,26 @@ $stmt = db()->prepare('
 $stmt->execute([$token]);
 $doc = $stmt->fetch();
 
+// ✅ Scheduled publishing check
+$now = new DateTime();
+
+if (!empty($doc['published_at'])) {
+    $publishTime = new DateTime($doc['published_at']);
+
+    if ($publishTime > $now) {
+        render_header('Not yet available');
+        ?>
+        <div class="centered-message">
+            <h1>This document is not yet available</h1>
+            <p>Please check back later.</p>
+        </div>
+        <?php
+        render_footer();
+        exit;
+    }
+}
+
+
 if (!$doc) {
     http_response_code(404);
     render_header('Not found');
